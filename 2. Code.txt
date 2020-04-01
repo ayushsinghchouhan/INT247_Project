@@ -1,0 +1,37 @@
+import numpy as np
+from skimage import io
+
+img = io.imread('https://i.stack.imgur.com/TFOv7.png')
+#img = io.imread('https://skytruth.org/wp-content/uploads/2019/01/PApad2018-05.png')
+
+rows, cols, bands = img.shape
+classes = {'building': 0, 'vegetation': 1, 'water': 2}
+n_classes = len(classes)
+palette = np.uint8([[255, 0, 0], [0, 255, 0], [0, 0, 255]])
+
+from sklearn.cluster import KMeans
+
+X = img.reshape(rows*cols, bands)
+kmeans = KMeans(n_clusters=n_classes, random_state=3).fit(X)
+unsupervised = kmeans.labels_.reshape(rows, cols)
+
+io.imshow(palette[unsupervised])
+
+supervised = n_classes*np.ones(shape=(rows, cols), dtype=np.int)
+
+supervised[200:220, 150:170] = classes['building']
+supervised[40:60, 40:60] = classes['vegetation']
+supervised[100:120, 200:220] = classes['water']
+
+y = supervised.ravel()
+train = np.flatnonzero(supervised < n_classes)
+test = np.flatnonzero(supervised == n_classes)
+
+from sklearn.svm import SVC
+
+clf = SVC(gamma='auto')
+clf.fit(X[train], y[train])
+y[test] = clf.predict(X[test])
+supervised = y.reshape(rows, cols)
+
+io.imshow(palette[supervised])
